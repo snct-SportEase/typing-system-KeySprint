@@ -1,6 +1,6 @@
 import inputSpecification from '../docs/typing-input-tests-v1.json';
 import { describe, expect, it } from 'vitest';
-import { applyTypingEvent, createTypingState } from './typing-engine.js';
+import { applyTypingEvent, createTypingState, getTypingView } from './typing-engine.js';
 
 const startsAt = 1_000;
 const endsAt = startsAt + 180_000;
@@ -29,6 +29,17 @@ describe('romanization conformance', () => {
 			}
 		});
 	}
+
+	it('「ん」の直後がな行のときは、独立した nn を優先表示する', () => {
+		const state = createTypingState([
+			{
+				displayText: '画面の表示を丁寧に確認する。',
+				reading: 'がめんのひょうじをていねいにかくにんする。'
+			}
+		]);
+
+		expect(getTypingView(state).romanizedText).toBe('gamennnohyoujiwoteineinikakuninsuru.');
+	});
 });
 
 describe('literal input', () => {
