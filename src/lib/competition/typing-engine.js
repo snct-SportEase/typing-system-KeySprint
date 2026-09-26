@@ -145,9 +145,9 @@ export function createRomanizationSegments(reading) {
 			const nextCharacter = normalized[index + 1];
 			const variants =
 				!nextCharacter || !isVowelNOrY(nextCharacter)
-					? ['nn', 'n']
+					? ['n', 'nn']
 					: isNCharacter(nextCharacter)
-						? ['n']
+						? ['nn', 'n']
 						: ['nn', "n'"];
 			segments.push(variants);
 			index += 1;
@@ -261,11 +261,21 @@ function representativeRemainder(paths, segments) {
 		const current = path.variant.slice(path.characterIndex);
 		const rest = segments
 			.slice(path.segmentIndex + 1)
-			.map((variants) => shortest(variants))
+			.map((variants) => preferred(variants))
 			.join('');
 		return current + rest;
 	});
-	return shortest(candidates);
+	return preferred(candidates);
+}
+
+/**
+ * @param {string[]} values
+ */
+function preferred(values) {
+	const [primary, secondary] = values;
+	// Prefer an independent `nn` before the n-row while retaining the shorter shared-n input.
+	if (primary && secondary && primary === `n${secondary}`) return primary;
+	return shortest(values);
 }
 
 /**

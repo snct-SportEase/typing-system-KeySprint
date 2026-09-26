@@ -62,7 +62,7 @@
     {"id":"R010","reading":"がっこう","accepted_inputs":["gakkou","gaxtukou","galtukou"],"rejected_inputs":["gakou"]},
     {"id":"R011","reading":"ほん","accepted_inputs":["hon","honn"],"rejected_inputs":["ho"]},
     {"id":"R012","reading":"かんい","accepted_inputs":["kanni","kan'i"],"rejected_inputs":["kani"]},
-    {"id":"R013","reading":"こんにちは","accepted_inputs":["konnitiha","konnichiha"],"rejected_inputs":["konitiha"]},
+    {"id":"R013","reading":"こんにちは","accepted_inputs":["konnitiha","konnichiha","konnnitiha","konnnichiha"],"rejected_inputs":["konitiha"]},
     {"id":"R014","reading":"きょう。","accepted_inputs":["kyou."],"rejected_inputs":["kyou"]},
     {"id":"R015","reading":"ノート、ペン。","accepted_inputs":["no-to,pen."],"rejected_inputs":["no-to pen."]},
     {"id":"R016","reading":"ふぁ","accepted_inputs":["huxa","hula","fuxa","fula"],"rejected_inputs":["fa"]},
