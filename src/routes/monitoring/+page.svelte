@@ -80,10 +80,7 @@
 				rawScoreTotal: results.reduce((total, result) => total + result.rawScore, 0),
 				accuracyAverage:
 					results.reduce((total, result) => total + result.accuracy, 0) / results.length,
-				incorrectTypesTotal: results.reduce(
-					(total, result) => total + result.incorrectTypes,
-					0
-				)
+				incorrectTypesTotal: results.reduce((total, result) => total + result.incorrectTypes, 0)
 			};
 		});
 		if (summaries.some((summary) => !summary)) return null;
@@ -103,7 +100,10 @@
 			);
 	});
 
-	function compareOverallResults(left: Omit<OverallResult, 'rank'>, right: Omit<OverallResult, 'rank'>) {
+	function compareOverallResults(
+		left: Omit<OverallResult, 'rank'>,
+		right: Omit<OverallResult, 'rank'>
+	) {
 		if (left.totalScore !== right.totalScore) return right.totalScore - left.totalScore;
 		if (left.rawScoreTotal !== right.rawScoreTotal) return right.rawScoreTotal - left.rawScoreTotal;
 		if (left.accuracyAverage !== right.accuracyAverage) {
@@ -130,9 +130,7 @@
 		socket.addEventListener('open', () => {
 			if (webSockets[matchNumber] !== socket) return;
 			connectionStates[matchNumber] = 'connected';
-			socket.send(
-				JSON.stringify({ type: 'monitor.subscribe', data: { matchNumber } })
-			);
+			socket.send(JSON.stringify({ type: 'monitor.subscribe', data: { matchNumber } }));
 		});
 		socket.addEventListener('message', (event) => {
 			const message = JSON.parse(String(event.data)) as CompetitionServerMessage;

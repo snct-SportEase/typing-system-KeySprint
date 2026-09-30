@@ -163,10 +163,11 @@ test('shows overall standings only after all three matches finish', async ({ pag
 	await page.goto('/monitoring');
 	await page.waitForFunction(() => document.querySelector('.monitor-summary .online'));
 
+	const teamNames = ['1年生', '2年生', '3年生', '4年生', '5年生', '専攻科・教員'];
 	for (const matchNumber of [1, 2, 3]) {
 		const lanes = Array.from({ length: 6 }, (_, index) => ({
 			laneNumber: index + 1,
-			teamName: `${index + 1}年生`,
+			teamName: teamNames[index],
 			representativeSource: `IS${index + 1}`,
 			connected: true,
 			ready: true,
@@ -215,7 +216,7 @@ test('shows overall standings only after all three matches finish', async ({ pag
 	await overallTab.click();
 	const results = page.getByRole('table');
 	await expect(results.locator('tbody tr')).toHaveCount(6);
-	await expect(results.locator('tbody tr').first()).toContainText('6年生');
+	await expect(results.locator('tbody tr').first()).toContainText('専攻科・教員');
 	await expect(results.locator('tbody tr').first()).toContainText('186');
 	await expect(results.locator('tbody tr').last()).toContainText('36');
 });
