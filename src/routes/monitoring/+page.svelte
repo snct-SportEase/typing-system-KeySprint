@@ -26,6 +26,16 @@
 					.filter((assignment) => assignment.matchNumber === selectedMatch)
 					.map(emptyLane)
 	);
+	let finalResults = $derived(
+		snapshot?.matchNumber === selectedMatch && snapshot.status === 'finished'
+			? [...lanes].sort((left, right) => {
+					return (
+						(left.rank ?? Number.POSITIVE_INFINITY) - (right.rank ?? Number.POSITIVE_INFINITY) ||
+						left.laneNumber - right.laneNumber
+					);
+				})
+			: null
+	);
 
 	onMount(() => {
 		const clock = setInterval(() => (now = Date.now()), 100);
@@ -157,58 +167,92 @@
 			<p>試合情報はまだ設定されていません。</p>
 		</section>
 	{:else}
-		<div class="monitor-grid" aria-label={`第${selectedMatch}試合 競技状況`}>
-			{#each lanes as lane (lane.laneNumber)}
-				<section
-					class="monitor-lane"
-					class:is-running={lane.status === 'running'}
-					aria-label={`レーン${lane.laneNumber} ${lane.teamName}`}
-				>
-					<header>
-						<div class="lane-identity">
-							<strong class="monitor-lane-number">{lane.laneNumber}</strong>
-							<div>
-								<h2>{lane.teamName}</h2>
-								<p>{lane.representativeSource}</p>
+		{#if finalResults}
+			<section
+				class="monitor-final-results"
+				aria-labelledby="monitor-final-results-title"
+				aria-live="polite"
+			>
+				<h1 id="monitor-final-results-title">第{selectedMatch}試合 最終結果</h1>
+				<div class="monitor-results-scroll">
+					<table class="monitor-results-table">
+						<thead>
+							<tr>
+								<th scope="col">順位</th>
+								<th scope="col">レーン</th>
+								<th scope="col">出場クラス</th>
+								<th scope="col">選出元</th>
+								<th scope="col">スコア</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each finalResults as lane (lane.laneNumber)}
+								<tr>
+									<td class="monitor-result-rank">{lane.rank ?? '—'}位</td>
+									<td>{lane.laneNumber}</td>
+									<th scope="row">{lane.teamName}</th>
+									<td>{lane.representativeSource}</td>
+									<td class="monitor-result-score">{lane.score}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			</section>
+		{:else}
+			<div class="monitor-grid" aria-label={`第${selectedMatch}試合 競技状況`}>
+				{#each lanes as lane (lane.laneNumber)}
+					<section
+						class="monitor-lane"
+						class:is-running={lane.status === 'running'}
+						aria-label={`レーン${lane.laneNumber} ${lane.teamName}`}
+					>
+						<header>
+							<div class="lane-identity">
+								<strong class="monitor-lane-number">{lane.laneNumber}</strong>
+								<div>
+									<h2>{lane.teamName}</h2>
+									<p>{lane.representativeSource}</p>
+								</div>
+							</div>
+							<div class={`lane-status status-${lane.status}`}>
+								<span>{statusLabel(lane.status)}</span>
+								{#if lane.rank}<strong>{lane.rank}位</strong>{/if}
+							</div>
+						</header>
+
+						<div class="monitor-problem">
+							<p>{lane.displayText}</p>
+							<div class="monitor-roman">
+								<span>{lane.romanizedText.slice(0, lane.inputPosition)}</span
+								>{lane.romanizedText.slice(lane.inputPosition)}
 							</div>
 						</div>
-						<div class={`lane-status status-${lane.status}`}>
-							<span>{statusLabel(lane.status)}</span>
-							{#if lane.rank}<strong>{lane.rank}位</strong>{/if}
-						</div>
-					</header>
 
-					<div class="monitor-problem">
-						<p>{lane.displayText}</p>
-						<div class="monitor-roman">
-							<span>{lane.romanizedText.slice(0, lane.inputPosition)}</span
-							>{lane.romanizedText.slice(lane.inputPosition)}
+						<div class="lane-progress" aria-label={`進捗 ${lane.progress.toFixed(0)}%`}>
+							<span style={`width: ${lane.progress}%`}></span>
 						</div>
-					</div>
-
-					<div class="lane-progress" aria-label={`進捗 ${lane.progress.toFixed(0)}%`}>
-						<span style={`width: ${lane.progress}%`}></span>
-					</div>
-					<dl class="monitor-metrics">
-						<div>
-							<dt>正タイプ</dt>
-							<dd>{lane.correctTypes}</dd>
-						</div>
-						<div>
-							<dt>ミス</dt>
-							<dd>{lane.incorrectTypes}</dd>
-						</div>
-						<div>
-							<dt>速度</dt>
-							<dd>{lane.wpm.toFixed(0)}</dd>
-						</div>
-						<div>
-							<dt>正確率</dt>
-							<dd>{(lane.accuracy * 100).toFixed(1)}%</dd>
-						</div>
-					</dl>
-				</section>
-			{/each}
-		</div>
+						<dl class="monitor-metrics">
+							<div>
+								<dt>正タイプ</dt>
+								<dd>{lane.correctTypes}</dd>
+							</div>
+							<div>
+								<dt>ミス</dt>
+								<dd>{lane.incorrectTypes}</dd>
+							</div>
+							<div>
+								<dt>速度</dt>
+								<dd>{lane.wpm.toFixed(0)}</dd>
+							</div>
+							<div>
+								<dt>正確率</dt>
+								<dd>{(lane.accuracy * 100).toFixed(1)}%</dd>
+							</div>
+						</dl>
+					</section>
+				{/each}
+			</div>
+		{/if}
 	{/if}
 </main>
