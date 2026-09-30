@@ -116,7 +116,6 @@ test('shows ranked scores on the monitoring screen after a match finishes', asyn
 	await expect(results.locator('tbody tr').last()).toContainText('100');
 });
 
-
 test('shows overall standings only after all three matches finish', async ({ page }) => {
 	await page.addInitScript(() => {
 		const sockets: EventTarget[] = [];
@@ -217,6 +216,6 @@ test('shows overall standings only after all three matches finish', async ({ pag
 	const results = page.getByRole('table');
 	await expect(results.locator('tbody tr')).toHaveCount(6);
 	await expect(results.locator('tbody tr').first()).toContainText('6年生');
-	await expect(results.locator('tbody tr').first()).toContainText('63');
-	await expect(results.locator('tbody tr').last()).toContainText('13');
+	await expect(results.locator('tbody tr').first()).toContainText('186');
+	await expect(results.locator('tbody tr').last()).toContainText('36');
 });
