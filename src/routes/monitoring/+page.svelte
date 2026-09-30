@@ -10,15 +10,42 @@
 	} from '$lib/competition/types';
 
 	let { data } = $props();
+	type OverallResult = {
+		teamName: string;
+		totalScore: number;
+		rawScoreTotal: number;
+		accuracyAverage: number;
+		incorrectTypesTotal: number;
+		rank: number;
+	};
+
 	let selectedMatch = $state(1);
-	let snapshot = $state<CompetitionSnapshot | null>(null);
-	let connectionState = $state<'connecting' | 'connected' | 'disconnected'>('connecting');
+	let showOverall = $state(false);
+	let matchSnapshots = $state<Record<number, CompetitionSnapshot | null>>({
+		1: null,
+		2: null,
+		3: null
+	});
+	let connectionStates = $state<Record<number, 'connecting' | 'connected' | 'disconnected'>>({
+		1: 'connecting',
+		2: 'connecting',
+		3: 'connecting'
+	});
+	let clockOffsets = $state<Record<number, number>>({ 1: 0, 2: 0, 3: 0 });
 	let now = $state(Date.now());
-	let clockOffset = $state(0);
-	let webSocket: WebSocket | null = null;
-	let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+	let webSockets: Record<number, WebSocket | null> = { 1: null, 2: null, 3: null };
+	let reconnectTimers: Record<number, ReturnType<typeof setTimeout> | undefined> = {};
 	let stopped = false;
 
+	let snapshot = $derived(matchSnapshots[selectedMatch]);
+	let connectionState = $derived.by(() => {
+		const states = showOverall
+			? [1, 2, 3].map((matchNumber) => connectionStates[matchNumber])
+			: [connectionStates[selectedMatch]];
+		if (states.every((state) => state === 'connected')) return 'connected';
+		if (states.some((state) => state === 'connecting')) return 'connecting';
+		return 'disconnected';
+	});
 	let lanes = $derived(
 		snapshot?.matchNumber === selectedMatch
 			? snapshot.lanes
@@ -36,55 +63,103 @@
 				})
 			: null
 	);
+	let overallResults = $derived.by(() => {
+		const snapshots = [1, 2, 3].map((matchNumber) => matchSnapshots[matchNumber]);
+		if (!snapshots.every((result) => result?.status === 'finished')) return null;
+
+		const teamNames = [...new Set(data.assignments.map((assignment) => assignment.teamName))];
+		const summaries = teamNames.map((teamName) => {
+			const teamResults = snapshots.map((result) =>
+				result?.lanes.find((lane) => lane.teamName === teamName)
+			);
+			if (teamResults.some((result) => !result)) return null;
+			const results = teamResults as LaneSnapshot[];
+			return {
+				teamName,
+				totalScore: results.reduce((total, result) => total + result.score, 0),
+				rawScoreTotal: results.reduce((total, result) => total + result.rawScore, 0),
+				accuracyAverage:
+					results.reduce((total, result) => total + result.accuracy, 0) / results.length,
+				incorrectTypesTotal: results.reduce(
+					(total, result) => total + result.incorrectTypes,
+					0
+				)
+			};
+		});
+		if (summaries.some((summary) => !summary)) return null;
+
+		const completeSummaries = summaries.filter((summary) => summary !== null);
+		return completeSummaries
+			.map((summary) => ({
+				...summary,
+				rank:
+					1 +
+					completeSummaries.filter((candidate) => compareOverallResults(candidate, summary) < 0)
+						.length
+			}))
+			.sort(
+				(left, right) =>
+					compareOverallResults(left, right) || left.teamName.localeCompare(right.teamName, 'ja')
+			);
+	});
+
+	function compareOverallResults(left: Omit<OverallResult, 'rank'>, right: Omit<OverallResult, 'rank'>) {
+		if (left.totalScore !== right.totalScore) return right.totalScore - left.totalScore;
+		if (left.rawScoreTotal !== right.rawScoreTotal) return right.rawScoreTotal - left.rawScoreTotal;
+		if (left.accuracyAverage !== right.accuracyAverage) {
+			return right.accuracyAverage - left.accuracyAverage;
+		}
+		return left.incorrectTypesTotal - right.incorrectTypesTotal;
+	}
 
 	onMount(() => {
 		const clock = setInterval(() => (now = Date.now()), 100);
-		connect();
+		for (const matchNumber of [1, 2, 3]) connect(matchNumber);
 		return () => {
 			stopped = true;
 			clearInterval(clock);
-			clearTimeout(reconnectTimer);
-			webSocket?.close();
+			for (const timer of Object.values(reconnectTimers)) clearTimeout(timer);
+			for (const socket of Object.values(webSockets)) socket?.close();
 		};
 	});
 
-	function connect() {
-		connectionState = 'connecting';
+	function connect(matchNumber: number) {
+		connectionStates[matchNumber] = 'connecting';
 		const socket = new WebSocket(webSocketUrl());
-		webSocket = socket;
+		webSockets[matchNumber] = socket;
 		socket.addEventListener('open', () => {
-			connectionState = 'connected';
-			subscribe();
+			if (webSockets[matchNumber] !== socket) return;
+			connectionStates[matchNumber] = 'connected';
+			socket.send(
+				JSON.stringify({ type: 'monitor.subscribe', data: { matchNumber } })
+			);
 		});
 		socket.addEventListener('message', (event) => {
 			const message = JSON.parse(String(event.data)) as CompetitionServerMessage;
 			if (message.type !== 'competition.snapshot') return;
-			snapshot = message.data;
-			clockOffset = message.data.serverTime - Date.now();
+			if (message.data.matchNumber !== matchNumber) return;
+			matchSnapshots[matchNumber] = message.data;
+			clockOffsets[matchNumber] = message.data.serverTime - Date.now();
 		});
 		socket.addEventListener('close', () => {
-			if (webSocket !== socket) return;
-			connectionState = 'disconnected';
-			if (!stopped) reconnectTimer = setTimeout(connect, 1_000);
+			if (webSockets[matchNumber] !== socket) return;
+			connectionStates[matchNumber] = 'disconnected';
+			if (!stopped) reconnectTimers[matchNumber] = setTimeout(() => connect(matchNumber), 1_000);
 		});
-	}
-
-	function subscribe() {
-		if (webSocket?.readyState !== WebSocket.OPEN) return;
-		webSocket.send(
-			JSON.stringify({ type: 'monitor.subscribe', data: { matchNumber: selectedMatch } })
-		);
 	}
 
 	function selectMatch(matchNumber: number) {
 		selectedMatch = matchNumber;
-		snapshot = null;
-		subscribe();
+		showOverall = false;
+	}
+
+	function selectOverall() {
+		showOverall = true;
 	}
 
 	function remainingSeconds() {
 		if (!snapshot?.endsAt) return snapshot?.durationSeconds ?? 180;
-		return Math.max(0, Math.ceil((snapshot.endsAt - (now + clockOffset)) / 1_000));
+		return Math.max(0, Math.ceil((snapshot.endsAt - (now + clockOffsets[selectedMatch])) / 1_000));
 	}
 
 	function formatTime(seconds: number) {
@@ -146,22 +221,70 @@
 				<button
 					type="button"
 					role="tab"
-					aria-selected={selectedMatch === matchNumber}
-					class:is-active={selectedMatch === matchNumber}
+					aria-selected={!showOverall && selectedMatch === matchNumber}
+					class:is-active={!showOverall && selectedMatch === matchNumber}
 					onclick={() => selectMatch(matchNumber)}>第{matchNumber}試合</button
 				>
 			{/each}
+			{#if overallResults}
+				<button
+					type="button"
+					role="tab"
+					aria-selected={showOverall}
+					class:is-active={showOverall}
+					onclick={selectOverall}>総合</button
+				>
+			{/if}
 		</div>
 		<div class="monitor-summary" aria-live="polite">
-			<span class:online={connectionState === 'connected'}
-				>{connectionState === 'connected' ? 'LIVE' : 'OFFLINE'}</span
-			>
-			<strong>{snapshot?.readyCount ?? 0}/6 準備</strong>
-			<time>{formatTime(remainingSeconds())}</time>
+			{#if showOverall}
+				<strong>3試合終了</strong>
+			{:else}
+				<span class:online={connectionState === 'connected'}
+					>{connectionState === 'connected' ? 'LIVE' : 'OFFLINE'}</span
+				>
+				<strong>{snapshot?.readyCount ?? 0}/6 準備</strong>
+				<time>{formatTime(remainingSeconds())}</time>
+			{/if}
 		</div>
 	</div>
 
-	{#if lanes.length === 0}
+	{#if showOverall}
+		{#if overallResults}
+			<section
+				class="monitor-final-results"
+				aria-labelledby="monitor-overall-results-title"
+				aria-live="polite"
+			>
+				<h1 id="monitor-overall-results-title">3試合 総合結果</h1>
+				<div class="monitor-results-scroll">
+					<table class="monitor-results-table">
+						<thead>
+							<tr>
+								<th scope="col">順位</th>
+								<th scope="col">学年</th>
+								<th scope="col">総合スコア</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each overallResults as result (result.teamName)}
+								<tr>
+									<td class="monitor-result-rank">{result.rank}位</td>
+									<th scope="row">{result.teamName}</th>
+									<td class="monitor-result-score">{result.totalScore}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			</section>
+		{:else}
+			<section class="empty-state">
+				<h1>総合結果</h1>
+				<p>第1〜第3試合がすべて終了すると表示されます。</p>
+			</section>
+		{/if}
+	{:else if lanes.length === 0}
 		<section class="empty-state">
 			<h1>第{selectedMatch}試合</h1>
 			<p>試合情報はまだ設定されていません。</p>
