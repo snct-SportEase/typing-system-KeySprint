@@ -1,4 +1,4 @@
-import { env } from '$env/dynamic/private';
+import * as env from '$app/env/private';
 import specification from '../../../docs/typing-problem-presets-v1.json' with { type: 'json' };
 import type { PageServerLoad } from './$types';
 

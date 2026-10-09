@@ -495,7 +495,7 @@ test('synchronizes six competition terminals with monitoring', async ({ browser 
 				headers: { accept: 'application/json', 'x-sveltekit-action': 'true' },
 				body: new URLSearchParams(assignments)
 			});
-			return response.json();
+			return { httpStatus: response.status, action: await response.json() };
 		},
 		{
 			source_1_0: '1-2',
@@ -518,7 +518,10 @@ test('synchronizes six competition terminals with monitoring', async ({ browser 
 			source_3_5: '専教'
 		}
 	);
-	expect(lockedAssignmentResult).toMatchObject({ type: 'failure', status: 409 });
+	expect(lockedAssignmentResult).toMatchObject({
+		httpStatus: 409,
+		action: { type: 'failure', status: 409 }
+	});
 
 	await expect(terminals[0].getByText('競技中', { exact: true })).toBeVisible({ timeout: 6_000 });
 	await terminals[1].reload();
