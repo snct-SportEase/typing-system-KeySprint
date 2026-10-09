@@ -1,4 +1,4 @@
-import { env } from '$env/dynamic/private';
+import * as env from '$app/env/private';
 import { getMatchConfirmations, getMatchResults } from '$lib/server/tournament/match-results';
 import { getSavedAssignments } from '$lib/server/tournament/saved-assignments';
 import { createTeamStandings } from '$lib/server/tournament/team-ranking';
