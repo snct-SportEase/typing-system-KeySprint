@@ -457,8 +457,14 @@ test('synchronizes six competition terminals with monitoring', async ({ browser 
 		const terminal = await terminalContext.newPage();
 		terminals.push(terminal);
 		await terminal.goto('/competition');
+		// SSR controls can be visible before SvelteKit has hydrated their event handlers.
+		await terminal.waitForFunction(() =>
+			sessionStorage.getItem('typing-system:competition-client-token')
+		);
 		await terminal.getByLabel('出場クラス').selectOption(representativeSource);
+		await expect(terminal.locator('.terminal-header h2')).toContainText(representativeSource);
 		await terminal.getByRole('button', { name: '端末を接続' }).click();
+		await expect(terminal.getByText('接続済み', { exact: true })).toBeVisible();
 		await terminal.getByRole('button', { name: '準備完了' }).click();
 		if (representativeSource === '1-1') {
 			await terminal.reload();
