@@ -1,6 +1,6 @@
-import { env } from '$env/dynamic/private';
+import * as env from '$app/env/private';
 import { verifyBasicAuthorization } from '$lib/server/auth/basic';
-import type { Handle } from '@sveltejs/kit';
+import type { Handle } from '@sveltejs/kit/hooks';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	if (!event.url.pathname.startsWith('/admin')) return resolve(event);

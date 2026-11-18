@@ -1,4 +1,4 @@
-import { env } from '$env/dynamic/private';
+import * as env from '$app/env/private';
 import { db } from '$lib/server/db';
 import { matchAssignments } from '$lib/server/db/schema';
 import {

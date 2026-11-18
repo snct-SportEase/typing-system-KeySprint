@@ -1,4 +1,4 @@
-import { env } from '$env/dynamic/private';
+import * as env from '$app/env/private';
 import { createOrReuseResultExport } from '$lib/server/tournament/result-export';
 import Database from 'better-sqlite3';
 import { error } from '@sveltejs/kit';
